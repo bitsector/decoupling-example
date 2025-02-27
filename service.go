@@ -54,10 +54,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	results[jobID] = resultChan
 	resultsLock.Unlock()
 
-	// Submit job to worker pool
-	jobQueue <- Job{
+	job := Job{
 		ID:     jobID,
 		Result: resultChan,
+	}
+
+	// Submit job to worker pool
+	select {
+	case jobQueue <- job:
+		// Success
+	case <-time.After(100 * time.Millisecond):
+		http.Error(w, "Server busy", http.StatusServiceUnavailable)
 	}
 
 	// Wait for result with timeout
