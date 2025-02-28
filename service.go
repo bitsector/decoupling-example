@@ -61,13 +61,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Wait for result with timeout
-	select {
-	case res := <-resultChan:
-		fmt.Fprintf(w, "Result: %d", res)
-	case <-time.After(5 * time.Second):
-		http.Error(w, "Processing timeout", http.StatusGatewayTimeout)
-	}
-
+	res := <-resultChan
+	fmt.Fprintf(w, "Result: %d", res)
 	close(resultChan)
 }
 
