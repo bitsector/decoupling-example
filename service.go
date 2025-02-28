@@ -17,10 +17,8 @@ type Job struct {
 }
 
 var (
-	jobQueue    = make(chan Job, 100)       // Buffered job channel
-	workerWg    sync.WaitGroup              // Worker synchronization
-	results     = make(map[string]chan int) // Active results
-	resultsLock sync.Mutex                  // Map protection
+	jobQueue = make(chan Job, 100) // Buffered job channel
+	workerWg sync.WaitGroup        // Worker synchronization
 )
 
 func heavyJob() int {
@@ -49,11 +47,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	resultChan := make(chan int, 1)
 	jobID := fmt.Sprintf("job-%d", time.Now().UnixNano())
 
-	// Store result channel before queuing
-	resultsLock.Lock()
-	results[jobID] = resultChan
-	resultsLock.Unlock()
-
 	job := Job{
 		ID:     jobID,
 		Result: resultChan,
@@ -75,10 +68,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Processing timeout", http.StatusGatewayTimeout)
 	}
 
-	// Cleanup
-	resultsLock.Lock()
-	delete(results, jobID)
-	resultsLock.Unlock()
 	close(resultChan)
 }
 
@@ -105,6 +94,7 @@ func main() {
 	}()
 
 	// Handle shutdown
+	// Signal to all workder to finish
 	<-ctx.Done()
 	server.Shutdown(context.Background())
 	workerWg.Wait()
